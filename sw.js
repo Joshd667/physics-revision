@@ -1,17 +1,17 @@
-// sw.js - Fixed Service Worker for Physics Audit Tool
+// sw.js - Fixed Service Worker for Physics Audit Tool with Analytics Support
 // Place this file in your project root (same folder as index.html)
 
-const CACHE_NAME = 'physics-audit-v1.3'; // Incremented for favicon addition
-const APP_VERSION = '1.3';
+const CACHE_NAME = 'physics-audit-v1.4'; // 🔥 INCREMENT THIS WHEN YOU UPDATE THE APP
+const APP_VERSION = '1.4';
 
-// 🎯 Corrected resource list - only paths that actually exist
+// 🎯 Core resources that should be cached
 const CRITICAL_RESOURCES = [
-    // Main page (the one that shows "🌐 Fetching: /")
+    // Main page
     './',
     './index.html',
-    './favicon.ico', // Added favicon
+    './favicon.ico',
     
-    // Core app files (these are working already)
+    // Core app files - THESE SHOULD BE CACHE-BUSTED ON UPDATES
     './css/style.css',
     './js/app-loader.js',
     './js/physics-audit-tool.js',
@@ -28,28 +28,31 @@ const CRITICAL_RESOURCES = [
     './js/modules/statistics.js',
     './js/modules/ui-helpers.js',
     
-    // External resources that work
+    // External resources
     'https://unpkg.com/alpinejs@3.x.x/dist/module.esm.js',
     'https://unpkg.com/lucide@latest/dist/umd/lucide.js'
-    
-    // Note: Removed Tailwind CSS due to CORS policy
-    // Note: Removed duplicate ./physics-audit/ paths that don't exist
 ];
 
-// 🔧 Install event - cache only resources that exist
+// 🚀 Install event - aggressive cache refresh
 self.addEventListener('install', event => {
     console.log(`🔧 Service Worker ${APP_VERSION} installing...`);
     
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('📦 Caching verified resources...');
+                console.log('📦 Force-caching all resources...');
                 
-                // Cache resources with individual error handling
+                // Force fetch all resources (bypass any existing cache)
                 const cachePromises = CRITICAL_RESOURCES.map(url => 
-                    cache.add(url)
+                    fetch(url, { cache: 'reload' }) // Force fresh fetch
+                        .then(response => {
+                            if (response.ok) {
+                                return cache.put(url, response.clone());
+                            }
+                            throw new Error(`HTTP ${response.status}`);
+                        })
                         .then(() => {
-                            console.log(`✅ Cached: ${url}`);
+                            console.log(`✅ Force-cached: ${url}`);
                             return { url, success: true };
                         })
                         .catch(error => {
@@ -64,42 +67,58 @@ self.addEventListener('install', event => {
                 const successful = results.filter(r => r.success).length;
                 const failed = results.filter(r => !r.success).length;
                 
-                console.log(`✅ Successfully cached ${successful}/${CRITICAL_RESOURCES.length} resources`);
+                console.log(`✅ Force-cached ${successful}/${CRITICAL_RESOURCES.length} resources`);
                 if (failed > 0) {
-                    console.log(`⚠️ Failed to cache ${failed} resources (expected for some external URLs)`);
+                    console.log(`⚠️ Failed to cache ${failed} resources`);
                 }
                 
+                // Force immediate activation
                 return self.skipWaiting();
             })
             .catch(error => {
                 console.error('❌ Cache installation failed:', error);
-                return self.skipWaiting(); // Continue anyway
+                return self.skipWaiting();
             })
     );
 });
 
-// 🚀 Activate event - clean up old caches
+// 🚀 Activate event - clean up old caches and take control immediately
 self.addEventListener('activate', event => {
     console.log(`🚀 Service Worker ${APP_VERSION} activating...`);
     
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames
-                    .filter(cacheName => cacheName !== CACHE_NAME)
-                    .map(oldCacheName => {
-                        console.log(`🗑️ Deleting old cache: ${oldCacheName}`);
-                        return caches.delete(oldCacheName);
-                    })
-            );
-        }).then(() => {
-            console.log('✅ Service Worker activated and caches cleaned');
-            return self.clients.claim();
+        Promise.all([
+            // Delete all old caches
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames
+                        .filter(cacheName => cacheName !== CACHE_NAME)
+                        .map(oldCacheName => {
+                            console.log(`🗑️ Deleting old cache: ${oldCacheName}`);
+                            return caches.delete(oldCacheName);
+                        })
+                );
+            }),
+            // Take control of all clients immediately
+            self.clients.claim()
+        ]).then(() => {
+            console.log('✅ Service Worker activated, old caches cleared, control claimed');
+            
+            // Notify all clients to reload
+            return self.clients.matchAll();
+        }).then(clients => {
+            clients.forEach(client => {
+                client.postMessage({ 
+                    type: 'SW_UPDATED', 
+                    version: APP_VERSION,
+                    action: 'reload_recommended'
+                });
+            });
         })
     );
 });
 
-// ⚡ Fetch event - handle requests efficiently
+// ⚡ Fetch event - Network-first for JS files, cache-first for others
 self.addEventListener('fetch', event => {
     const request = event.request;
     const url = new URL(request.url);
@@ -115,39 +134,78 @@ self.addEventListener('fetch', event => {
     }
 });
 
-// 🎯 Optimized request handler
+// 🎯 Smart request handler with network-first for JS files
 async function handleRequest(request) {
     const url = new URL(request.url);
+    const isJavaScript = url.pathname.endsWith('.js') || url.pathname.includes('/js/');
+    const isHTML = request.destination === 'document' || url.pathname.endsWith('.html');
     
     try {
-        // Check cache first
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            console.log(`⚡ Cache hit: ${url.pathname}`);
-            return cachedResponse;
-        }
-        
-        // Not in cache - fetch from network
-        console.log(`🌐 Fetching: ${url.pathname}`);
-        const networkResponse = await fetch(request);
-        
-        // Cache successful responses for same-origin resources
-        if (networkResponse.status === 200 && url.origin === location.origin) {
+        // Network-first strategy for JavaScript and HTML files (ensures updates)
+        if (isJavaScript || isHTML) {
+            console.log(`🌐 Network-first: ${url.pathname}`);
+            
             try {
-                const cache = await caches.open(CACHE_NAME);
-                await cache.put(request, networkResponse.clone());
-                console.log(`💾 Cached new resource: ${url.pathname}`);
-            } catch (cacheError) {
-                console.warn(`Failed to cache ${url.pathname}:`, cacheError);
+                const networkResponse = await fetch(request, { cache: 'reload' });
+                
+                if (networkResponse.ok) {
+                    // Update cache with fresh content
+                    try {
+                        const cache = await caches.open(CACHE_NAME);
+                        await cache.put(request, networkResponse.clone());
+                        console.log(`💾 Updated cache: ${url.pathname}`);
+                    } catch (cacheError) {
+                        console.warn(`Failed to update cache for ${url.pathname}:`, cacheError);
+                    }
+                }
+                
+                return networkResponse;
+                
+            } catch (networkError) {
+                console.log(`📱 Network failed, falling back to cache: ${url.pathname}`);
+                const cachedResponse = await caches.match(request);
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+                throw networkError;
             }
         }
         
-        return networkResponse;
+        // Cache-first strategy for CSS, images, and other static assets
+        else {
+            const cachedResponse = await caches.match(request);
+            if (cachedResponse) {
+                console.log(`⚡ Cache hit: ${url.pathname}`);
+                return cachedResponse;
+            }
+            
+            console.log(`🌐 Fetching: ${url.pathname}`);
+            const networkResponse = await fetch(request);
+            
+            if (networkResponse.status === 200 && url.origin === location.origin) {
+                try {
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.put(request, networkResponse.clone());
+                    console.log(`💾 Cached new resource: ${url.pathname}`);
+                } catch (cacheError) {
+                    console.warn(`Failed to cache ${url.pathname}:`, cacheError);
+                }
+            }
+            
+            return networkResponse;
+        }
         
     } catch (error) {
         console.error(`❌ Fetch failed for ${url.pathname}:`, error);
         
-        // Offline fallback for HTML requests
+        // Final fallback
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            console.log('🔄 Serving cached fallback');
+            return cachedResponse;
+        }
+        
+        // For HTML requests, serve the main page as fallback
         if (request.destination === 'document') {
             const fallback = await caches.match('./index.html');
             if (fallback) {
@@ -163,8 +221,8 @@ async function handleRequest(request) {
 // 🔍 Helper function for allowed external resources
 function isAllowedExternalResource(url) {
     const allowedDomains = [
-        'unpkg.com'
-        // Removed cdn.tailwindcss.com due to CORS issues
+        'unpkg.com',
+        'cdn.jsdelivr.net'
     ];
     
     return allowedDomains.some(domain => url.hostname.includes(domain));
@@ -173,6 +231,7 @@ function isAllowedExternalResource(url) {
 // 📱 Handle messages from main thread
 self.addEventListener('message', event => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
+        console.log('⚡ Force-activating new service worker');
         self.skipWaiting();
     }
     
@@ -180,9 +239,32 @@ self.addEventListener('message', event => {
         event.ports[0].postMessage({ 
             version: APP_VERSION, 
             cache: CACHE_NAME,
-            resources: CRITICAL_RESOURCES.length
+            resources: CRITICAL_RESOURCES.length,
+            strategy: 'network-first-js'
+        });
+    }
+    
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        console.log('🗑️ Manual cache clear requested');
+        caches.delete(CACHE_NAME).then(() => {
+            event.ports[0].postMessage({ type: 'CACHE_CLEARED' });
         });
     }
 });
 
-console.log(`🔧 Service Worker ${APP_VERSION} loaded with ${CRITICAL_RESOURCES.length} resources to cache`);
+console.log(`🔧 Service Worker ${APP_VERSION} loaded with network-first JS strategy`);
+
+// 🔥 DEVELOPMENT HELPER: Automatically reload when SW updates
+// Remove this in production if you want manual control
+if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+    console.log('🛠️ Development mode: Auto-reload enabled');
+    
+    self.addEventListener('activate', () => {
+        // In development, auto-reload all tabs when SW updates
+        self.clients.matchAll().then(clients => {
+            clients.forEach(client => {
+                client.postMessage({ type: 'DEV_RELOAD' });
+            });
+        });
+    });
+}
