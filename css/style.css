@@ -1,0 +1,262 @@
+/* css/style.css */
+body { font-family: sans-serif; }
+[x-cloak] { display: none !important; }
+.transition-all { transition: all 0.3s ease-in-out; }
+.dropdown-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
+.dropdown-content.expanded { max-height: 1000px; }
+
+/* Light mode animated gradient */
+.animated-gradient { 
+    background: linear-gradient(-45deg, #e0f7fa, #e3f2fd, #f1f8e9, #e8eaf6); 
+    background-size: 400% 400%; 
+    animation: gradient-animation 15s ease infinite; 
+}
+
+/* Dark mode ChillWave animated gradient - ONLY for the banner */
+.dark .animated-gradient { 
+    background: linear-gradient(-45deg, #1a0b2e, #16213e, #0f3460, #533a7d, #4c956c, #2f1b69, #141b2d); 
+    background-size: 400% 400%; 
+    animation: gradient-animation 20s ease infinite; 
+}
+
+@keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ===========================================
+   ENHANCED SCROLLBAR STYLING
+   =========================================== */
+
+/* ===========================================
+   GLOBAL THIN SCROLLBARS (Works in Chrome & Edge)
+   =========================================== */
+
+/* Webkit Scrollbars (Chrome, Safari, Edge) - Apply only to scrollable containers */
+body::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+body::-webkit-scrollbar-track,
+.overflow-auto::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.overflow-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+}
+
+body::-webkit-scrollbar-thumb,
+.overflow-auto::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.overflow-scroll::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4); /* gray-400 with opacity */
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+    transition: all 0.2s ease;
+}
+
+body::-webkit-scrollbar-thumb:hover,
+.overflow-auto::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.overflow-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.7); /* gray-400 with higher opacity */
+    background-clip: content-box;
+}
+
+body::-webkit-scrollbar-thumb:active,
+.overflow-auto::-webkit-scrollbar-thumb:active,
+.overflow-y-auto::-webkit-scrollbar-thumb:active,
+.overflow-x-auto::-webkit-scrollbar-thumb:active,
+.overflow-scroll::-webkit-scrollbar-thumb:active {
+    background: rgba(156, 163, 175, 0.9);
+    background-clip: content-box;
+}
+
+/* Dark mode scrollbar */
+.dark body::-webkit-scrollbar-thumb,
+.dark .overflow-auto::-webkit-scrollbar-thumb,
+.dark .overflow-y-auto::-webkit-scrollbar-thumb,
+.dark .overflow-x-auto::-webkit-scrollbar-thumb,
+.dark .overflow-scroll::-webkit-scrollbar-thumb {
+    background: rgba(107, 114, 128, 0.4); /* gray-500 with opacity */
+    background-clip: content-box;
+}
+
+.dark body::-webkit-scrollbar-thumb:hover,
+.dark .overflow-auto::-webkit-scrollbar-thumb:hover,
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.dark .overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.dark .overflow-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.7); /* gray-500 with higher opacity */
+    background-clip: content-box;
+}
+
+.dark body::-webkit-scrollbar-thumb:active,
+.dark .overflow-auto::-webkit-scrollbar-thumb:active,
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:active,
+.dark .overflow-x-auto::-webkit-scrollbar-thumb:active,
+.dark .overflow-scroll::-webkit-scrollbar-thumb:active {
+    background: rgba(107, 114, 128, 0.9);
+    background-clip: content-box;
+}
+
+/* Remove scrollbar arrows completely */
+::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox scrollbars - Apply only to scrollable containers */
+body,
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+
+.dark body,
+.dark .overflow-auto,
+.dark .overflow-y-auto,
+.dark .overflow-x-auto,
+.dark .overflow-scroll {
+    scrollbar-color: rgba(107, 114, 128, 0.4) transparent;
+}
+
+/* ===========================================
+   MINIMAL SCROLLBARS - HIDDEN UNTIL HOVER
+   =========================================== */
+.minimal-scrollbar {
+    overflow: auto;
+    position: relative;
+}
+
+/* Start with very thin, nearly invisible scrollbar */
+.minimal-scrollbar::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+    transition: all 0.3s ease;
+}
+
+.minimal-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.minimal-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.1);
+    border-radius: 1px;
+    transition: all 0.3s ease;
+}
+
+/* Show full scrollbar on hover */
+.minimal-scrollbar:hover::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.minimal-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.6);
+    border-radius: 4px;
+}
+
+/* Dark mode for minimal scrollbar */
+.dark .minimal-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(107, 114, 128, 0.1);
+}
+
+.dark .minimal-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(107, 114, 128, 0.6);
+}
+
+/* Firefox fallback for minimal scrollbar */
+.minimal-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.1) transparent;
+}
+
+.minimal-scrollbar:hover {
+    scrollbar-color: rgba(156, 163, 175, 0.6) transparent;
+}
+
+.dark .minimal-scrollbar {
+    scrollbar-color: rgba(107, 114, 128, 0.1) transparent;
+}
+
+.dark .minimal-scrollbar:hover {
+    scrollbar-color: rgba(107, 114, 128, 0.6) transparent;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+}
+
+css.breadcrumb button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    color: inherit;
+}
+
+.breadcrumb button:hover {
+    text-decoration: underline;
+}
+.breadcrumb-separator {
+    color: rgb(156 163 175);
+}
+
+/* Revision section HTML content styling */
+.revision-notes h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: inherit;
+}
+
+.revision-notes h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: inherit;
+}
+
+.revision-notes p {
+    margin-bottom: 0.75rem;
+    color: inherit;
+}
+
+.revision-notes ul {
+    margin-bottom: 0.75rem;
+    padding-left: 1.25rem;
+}
+
+.revision-notes li {
+    margin-bottom: 0.25rem;
+    color: inherit;
+}
+
+.revision-notes strong {
+    font-weight: 600;
+    color: inherit;
+}

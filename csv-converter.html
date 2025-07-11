@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Audit - CSV to JSON Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin: 5px; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .progress { width: 100%; background: #e9ecef; border-radius: 5px; margin: 10px 0; }
+        .progress-bar { height: 20px; background: #28a745; border-radius: 5px; transition: width 0.3s; text-align: center; line-height: 20px; color: white; font-size: 12px; }
+        .file-list { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .file-status { margin: 5px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Physics Audit Tool - CSV to JSON Converter</h1>
+    
+    <div class="info status">
+        <strong>📝 What this does:</strong>
+        <ul>
+            <li>Combines all 15 CSV files into 1 JSON file</li>
+            <li>Reduces load time from ~20 seconds to ~1 second</li>
+            <li>Keeps your CSVs unchanged - they remain your source files</li>
+            <li>When you update CSVs, just re-run this converter</li>
+        </ul>
+    </div>
+
+    <button id="convertBtn" onclick="convertAllCSVs()">🔄 Convert All CSVs to JSON</button>
+    <button id="downloadBtn" onclick="downloadJSON()" disabled>📥 Download combined-data.json</button>
+    
+    <div class="progress" style="display: none;" id="progressContainer">
+        <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div class="file-list" id="fileList" style="display: none;">
+        <h3>📁 Files to Process:</h3>
+        <div id="fileStatuses"></div>
+    </div>
+
+    <script>
+        let combinedData = null;
+
+        // All your CSV files
+        const csvFiles = {
+            subject: [
+                'resources/subject-cards/measurements.csv',
+                'resources/subject-cards/particles.csv',
+                'resources/subject-cards/waves.csv',
+                'resources/subject-cards/mechanics.csv',
+                'resources/subject-cards/electricity.csv',
+                'resources/subject-cards/periodic-motion.csv',
+                'resources/subject-cards/thermal.csv',
+                'resources/subject-cards/fields.csv',
+                'resources/subject-cards/magnetic-fields.csv',
+                'resources/subject-cards/nuclear.csv'
+            ],
+            resources: [
+                'resources/videos.csv',
+                'resources/notes.csv',
+                'resources/simulations.csv',
+                'resources/questions.csv',
+                'resources/revisionsections.csv'
+            ]
+        };
+
+        // CSV parser (same as your app)
+        function parseCSV(csvText) {
+            if (!csvText || !csvText.trim()) return [];
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length === 0) return [];
+            
+            const headers = parseLine(lines[0]);
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseLine(lines[i]);
+                const row = {};
+                headers.forEach((header, index) => {
+                    let value = values[index] || '';
+                    
+                    if (value.startsWith('"') && value.endsWith('"')) {
+                        value = value.slice(1, -1);
+                    }
+                    
+                    // Clean HTML for notes
+                    if (header === 'notes_html' && value) {
+                        value = value
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#x27;/g, "'")
+                            .replace(/&amp;/g, '&');
+                    }
+                    
+                    row[header] = value;
+                });
+                data.push(row);
+            }
+            
+            return data;
+        }
+
+        function parseLine(line) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current.trim());
+            return values;
+        }
+
+        // Load CSV file with status updates
+        async function loadCSVFile(filepath) {
+            const fileDiv = document.getElementById(`file-${filepath.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            try {
+                if (fileDiv) fileDiv.innerHTML = `⏳ ${filepath} - Loading...`;
+                
+                const response = await fetch(filepath);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+                
+                if (fileDiv) fileDiv.innerHTML = `✅ ${filepath} - ${data.length} rows loaded`;
+                return data;
+            } catch (error) {
+                if (fileDiv) fileDiv.innerHTML = `❌ ${filepath} - ${error.message}`;
+                console.error(`Error loading ${filepath}:`, error);
+                return [];
+            }
+        }
+
+        // Convert subject CSV to your app format
+        function convertSubjectCSV(csvData) {
+            const sections = {};
+            
+            csvData.forEach(row => {
+                if (!row.section_name) return;
+                
+                if (!sections[row.section_name]) {
+                    sections[row.section_name] = {
+                        title: row.section_title,
+                        paper: row.section_paper,
+                        icon: row.section_icon,
+                        topics: []
+                    };
+                }
+                
+                const learningObjectives = row.learning_objectives ? 
+                    row.learning_objectives.split('|').map(obj => obj.trim()).filter(obj => obj) : [];
+                const examples = row.examples ? 
+                    row.examples.split('|').map(ex => ex.trim()).filter(ex => ex) : [];
+                
+                sections[row.section_name].topics.push({
+                    id: row.topic_id,
+                    title: row.topic_title,
+                    prompt: row.topic_prompt,
+                    learningObjectives: learningObjectives,
+                    examples: examples
+                });
+            });
+            
+            return sections;
+        }
+
+        function updateProgress(current, total) {
+            const percent = Math.round((current / total) * 100);
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = `${percent}% (${current}/${total})`;
+            document.getElementById('progressContainer').style.display = 'block';
+        }
+
+        function addStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            statusDiv.appendChild(div);
+        }
+
+        // Create file status list
+        function createFileList() {
+            const fileListDiv = document.getElementById('fileList');
+            const fileStatusesDiv = document.getElementById('fileStatuses');
+            fileListDiv.style.display = 'block';
+            
+            fileStatusesDiv.innerHTML = '';
+            const allFiles = [...csvFiles.subject, ...csvFiles.resources];
+            
+            allFiles.forEach(filepath => {
+                const div = document.createElement('div');
+                div.className = 'file-status';
+                div.id = `file-${filepath.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                div.innerHTML = `⏱️ ${filepath} - Waiting...`;
+                fileStatusesDiv.appendChild(div);
+            });
+        }
+
+        async function convertAllCSVs() {
+            const convertBtn = document.getElementById('convertBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            convertBtn.disabled = true;
+            downloadBtn.disabled = true;
+            document.getElementById('status').innerHTML = '';
+            
+            createFileList();
+            
+            try {
+                addStatus('🚀 Starting conversion of all CSV files...', 'info');
+                
+                const allFiles = [...csvFiles.subject, ...csvFiles.resources];
+                let processedFiles = 0;
+                
+                // Load subject files in parallel
+                addStatus('📚 Converting subject files...', 'info');
+                const subjectPromises = csvFiles.subject.map(filepath => loadCSVFile(filepath));
+                const subjectResults = await Promise.all(subjectPromises);
+                
+                let specificationData = {};
+                subjectResults.forEach((csvData, index) => {
+                    const converted = convertSubjectCSV(csvData);
+                    specificationData = { ...specificationData, ...converted };
+                    processedFiles++;
+                    updateProgress(processedFiles, allFiles.length);
+                });
+                
+                // Load resource files in parallel
+                addStatus('🎯 Converting resource files...', 'info');
+                const resourcePromises = csvFiles.resources.map(filepath => loadCSVFile(filepath));
+                const resourceResults = await Promise.all(resourcePromises);
+                
+                const resourceData = {};
+                resourceResults.forEach((csvData, index) => {
+                    const filename = csvFiles.resources[index].split('/').pop().replace('.csv', '');
+                    resourceData[filename] = csvData;
+                    processedFiles++;
+                    updateProgress(processedFiles, allFiles.length);
+                });
+                
+                // Create combined data
+                combinedData = {
+                    specificationData,
+                    resourceData,
+                    buildTime: new Date().toISOString(),
+                    version: '1.0',
+                    meta: {
+                        totalSections: Object.keys(specificationData).length,
+                        resourceTypes: Object.keys(resourceData).length,
+                        filesProcessed: processedFiles,
+                        sizeReduction: `${allFiles.length} files → 1 file`
+                    }
+                };
+                
+                addStatus('✅ Conversion completed successfully!', 'success');
+                addStatus(`📊 Created combined data with ${combinedData.meta.totalSections} sections and ${combinedData.meta.resourceTypes} resource types`, 'success');
+                downloadBtn.disabled = false;
+                
+            } catch (error) {
+                addStatus(`❌ Conversion failed: ${error.message}`, 'error');
+            } finally {
+                convertBtn.disabled = false;
+            }
+        }
+
+        function downloadJSON() {
+            if (!combinedData) {
+                addStatus('❌ No data to download. Run conversion first.', 'error');
+                return;
+            }
+            
+            // Minified JSON (no whitespace) - saves ~30% file size
+            const jsonString = JSON.stringify(combinedData);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'combined-data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            addStatus('✅ Downloaded combined-data.json! Place it in: js/data/combined-data.json', 'success');
+            addStatus('💡 Next: Update your app-loader.js to use JSON loading', 'info');
+        }
+    </script>
+</body>
+</html>
