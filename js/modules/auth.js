@@ -5,6 +5,7 @@ const MOODLE_CONFIG = {
     // Replace with your actual Moodle site URL
     ALLOWED_MOODLE_SITES: [
         'https://7b54506350adb640d68ffd2c6a763064-11784.sites.k-hosting.co.uk/',
+        'https://phizzquizz.uk/'
         // Add more allowed Moodle sites here
     ],
     
