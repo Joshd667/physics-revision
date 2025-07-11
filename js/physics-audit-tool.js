@@ -1,5 +1,5 @@
 // js/physics-audit-tool.js - Enhanced with CSV Resource Loading
-import { authMethods } from './modules/auth.js';
+import { authMethods, enhancedDataManagement } from './modules/auth.js';
 import { searchMethods } from './modules/search.js';
 import { dataManagementMethods } from './modules/data-management.js';
 import { navigationMethods } from './modules/navigation.js';
@@ -1014,24 +1014,7 @@ export function createPhysicsAuditTool(specificationData, paperModeGroups, specM
         },
 
         saveData() {
-            const dataToSave = {
-                confidenceLevels: this.confidenceLevels,
-                lastUpdated: new Date().toISOString(),
-                version: "1.1",
-                user: this.user
-            };
-
-            // Save locally with user-specific key for Moodle users
-            if (this.authMethod === 'moodle' && this.user && this.user.moodleId) {
-                localStorage.setItem(`physicsAuditData_student_${this.user.moodleId}`, JSON.stringify(dataToSave));
-            } else {
-                localStorage.setItem('physicsAuditData', JSON.stringify(dataToSave));
-            }
-
-            // For Moodle users, also attempt to sync to backend
-            if (this.authMethod === 'moodle' && this.user) {
-                this.syncToMoodleBackend(dataToSave);
-            }
+            enhancedDataManagement.saveData.call(this);
         },
 
         async syncToMoodleBackend(data) {
@@ -1046,88 +1029,20 @@ export function createPhysicsAuditTool(specificationData, paperModeGroups, specM
         },
 
         loadSavedData() {
-            try {
-                let savedData = null;
-                
-                // For Moodle users, try user-specific data first
-                if (this.authMethod === 'moodle' && this.user && this.user.moodleId) {
-                    const userSpecificData = localStorage.getItem(`physicsAuditData_student_${this.user.moodleId}`);
-                    if (userSpecificData) {
-                        savedData = JSON.parse(userSpecificData);
-                    }
-                }
-                
-                // Fallback to general data
-                if (!savedData) {
-                    const generalData = localStorage.getItem('physicsAuditData');
-                    if (generalData) {
-                        savedData = JSON.parse(generalData);
-                    }
-                }
-
-                if (savedData) {
-                    this.confidenceLevels = savedData.confidenceLevels || {};
-                }
-            } catch (error) {
-                console.warn('Could not load saved data:', error);
-                this.confidenceLevels = {};
-            }
+            enhancedDataManagement.loadSavedData.call(this);
         },
 
         clearAllData() {
-            if (confirm('Are you sure you want to clear ALL your confidence ratings? This cannot be undone.')) {
-                this.confidenceLevels = {};
-                
-                // Clear both general and user-specific data
-                localStorage.removeItem('physicsAuditData');
-                if (this.authMethod === 'moodle' && this.user && this.user.moodleId) {
-                    localStorage.removeItem(`physicsAuditData_student_${this.user.moodleId}`);
-                }
-                
-                alert('All data has been cleared.');
-            }
+            enhancedDataManagement.clearAllData.call(this);
         },
-
+        
         exportDataBackup() {
-            const dataToExport = {
-                confidenceLevels: this.confidenceLevels,
-                exportDate: new Date().toISOString(),
-                version: "1.1",
-                user: this.user
-            };
-            const dataStr = JSON.stringify(dataToExport, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `physics-audit-backup-${this.user?.username || 'user'}-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            URL.revokeObjectURL(link.href);
+            enhancedDataManagement.exportDataBackup.call(this);
         },
 
         importDataBackup(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (importedData.confidenceLevels) {
-                        if (confirm('This will replace your current confidence ratings. Are you sure?')) {
-                            this.confidenceLevels = importedData.confidenceLevels;
-                            this.saveData();
-                            alert('Data imported successfully!');
-                        }
-                    } else {
-                        alert('Invalid backup file format.');
-                    }
-                } catch (error) {
-                    alert('Error reading backup file: ' + error.message);
-                }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
+            enhancedDataManagement.importDataBackup.call(this, event);
         },
-
         // --- MODULARIZED METHODS (with enhanced auth) ---
         ...authMethods,
         ...searchMethods,
