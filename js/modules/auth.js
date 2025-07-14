@@ -1,24 +1,21 @@
-// js/modules/auth.js - Enhanced Moodle Authentication with File Storage
+// js/modules/auth.js - Simplified Authentication with Guest and Teams Login
 
-// Configuration - UPDATE THESE WITH YOUR MOODLE SETTINGS
-const MOODLE_CONFIG = {
-    // Replace with your actual Moodle site URL
-    ALLOWED_MOODLE_SITES: [
-        'https://7b54506350adb640d68ffd2c6a763064-11784.sites.k-hosting.co.uk/',
-        'https://phizzquizz.uk/'
-        // Add more allowed Moodle sites here
-    ],
+// Configuration for Microsoft Teams/Azure AD
+const TEAMS_CONFIG = {
+    // Replace with your actual Azure AD application configuration
+    CLIENT_ID: 'your-teams-app-client-id', // Get from Azure AD App Registration
+    TENANT_ID: 'your-tenant-id', // Your organization's tenant ID
+    REDIRECT_URI: window.location.origin + '/auth-callback.html', // Create this page
+    SCOPES: ['openid', 'profile', 'email', 'offline_access'],
     
-    // File name for storing the physics audit data
+    // File storage configuration for Teams
     DATA_FILENAME: 'physics-audit-data.json',
-    
-    // Auto-save interval (in milliseconds)
     AUTO_SAVE_INTERVAL: 30000, // 30 seconds
 };
 
 export const authMethods = {
-    // Internal state for Moodle authentication
-    moodleToken: null,
+    // Internal state for Teams authentication
+    teamsToken: null,
     autoSaveTimer: null,
 
     checkExistingAuth() {
@@ -32,9 +29,9 @@ export const authMethods = {
                     this.isAuthenticated = true;
                     this.showLoginScreen = false;
                     
-                    // Restore Moodle token if available
-                    if (authData.method === 'moodle' && authData.user.moodleToken) {
-                        this.moodleToken = authData.user.moodleToken;
+                    // Restore Teams token if available
+                    if (authData.method === 'teams' && authData.user.teamsToken) {
+                        this.teamsToken = authData.user.teamsToken;
                         this.startAutoSave();
                     }
                     
@@ -48,187 +45,270 @@ export const authMethods = {
         this.showLoginScreen = true;
     },
 
-    async loginWithMoodle(username, password, moodleUrl) {
+    async loginWithTeams() {
         this.isLoading = true;
         this.loginError = null;
 
         try {
-            console.log('🔐 Authenticating with Moodle...');
+            console.log('🔐 Authenticating with Microsoft Teams...');
             
-            // Validate Moodle URL
-            if (!this.isValidMoodleUrl(moodleUrl)) {
-                throw new Error('Invalid Moodle site. Please use your school\'s official Moodle URL.');
-            }
-            
-            // Step 1: Get authentication token from Moodle
-            const tokenResponse = await fetch(`${moodleUrl}/login/token.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    username: username,
-                    password: password,
-                    service: 'moodle_mobile_app'
-                })
-            });
-
-            if (!tokenResponse.ok) {
-                throw new Error(`Connection failed: ${tokenResponse.status}. Check your Moodle URL.`);
+            // Check if we're in Teams context
+            if (this.isInTeamsContext()) {
+                await this.authenticateInTeams();
+            } else {
+                // Fallback to web-based OAuth flow
+                await this.authenticateWithAzureAD();
             }
 
-            const tokenData = await tokenResponse.json();
-            
-            if (tokenData.error) {
-                throw new Error(tokenData.error);
-            }
-
-            if (!tokenData.token) {
-                throw new Error('Invalid username or password');
-            }
-
-            this.moodleToken = tokenData.token;
-
-            // Step 2: Get user information
-            const userInfo = await this.getMoodleUserInfo(moodleUrl);
-            
-            // Step 3: Set up user session
-            this.user = {
-                id: userInfo.userid,
-                username: userInfo.username,
-                name: `${userInfo.firstname} ${userInfo.lastname}`,
-                email: userInfo.email,
-                moodleUrl: moodleUrl,
-                moodleToken: this.moodleToken
-            };
-
-            this.authMethod = 'moodle';
-
-            // Step 4: Load existing data from Moodle
-            await this.loadDataFromMoodle();
-
-            // Step 5: Complete login
-            this.completeLogin();
-
-            // Start auto-save
-            this.startAutoSave();
-
-            console.log('✅ Moodle authentication successful');
+            console.log('✅ Teams authentication successful');
 
         } catch (error) {
-            console.error('❌ Moodle authentication failed:', error);
+            console.error('❌ Teams authentication failed:', error);
             this.loginError = error.message;
         } finally {
             this.isLoading = false;
         }
     },
 
-    // Validate Moodle URL against allowed sites
-    isValidMoodleUrl(url) {
-        try {
-            const urlObj = new URL(url);
-            return MOODLE_CONFIG.ALLOWED_MOODLE_SITES.some(allowed => {
-                const allowedObj = new URL(allowed);
-                return urlObj.hostname === allowedObj.hostname;
-            });
-        } catch {
-            return false;
-        }
+    // Check if running inside Microsoft Teams
+    isInTeamsContext() {
+        return window.parent !== window.self && 
+               (window.location.hostname.includes('teams.microsoft.com') || 
+                window.navigator.userAgent.includes('Teams/'));
     },
 
-    // Get user info from Moodle
-    async getMoodleUserInfo(moodleUrl) {
-        const response = await fetch(`${moodleUrl}/webservice/rest/server.php`, {
+    // Authenticate using Teams JavaScript SDK
+    async authenticateInTeams() {
+        // Load Teams SDK if not already loaded
+        if (!window.microsoftTeams) {
+            await this.loadTeamsSDK();
+        }
+
+        return new Promise((resolve, reject) => {
+            window.microsoftTeams.initialize();
+            
+            // Get Teams context
+            window.microsoftTeams.getContext((context) => {
+                console.log('Teams context:', context);
+                
+                // Use Teams SSO
+                window.microsoftTeams.authentication.getAuthToken({
+                    resources: [TEAMS_CONFIG.CLIENT_ID],
+                    silent: false,
+                    failureCallback: (error) => {
+                        console.error('Teams SSO failed:', error);
+                        reject(new Error('Teams authentication failed: ' + error));
+                    },
+                    successCallback: async (token) => {
+                        try {
+                            this.teamsToken = token;
+                            
+                            // Decode the token to get user info
+                            const userInfo = this.decodeJWTToken(token);
+                            
+                            this.user = {
+                                id: userInfo.sub || userInfo.oid,
+                                username: userInfo.preferred_username || userInfo.upn,
+                                name: userInfo.name,
+                                email: userInfo.email || userInfo.preferred_username,
+                                tenantId: context.tid,
+                                teamsToken: token,
+                                teamsContext: context
+                            };
+
+                            this.authMethod = 'teams';
+                            
+                            // Load existing data
+                            await this.loadDataFromTeams();
+                            
+                            this.completeLogin();
+                            this.startAutoSave();
+                            
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    }
+                });
+            });
+        });
+    },
+
+    // Fallback web-based OAuth flow
+    async authenticateWithAzureAD() {
+        // Construct Azure AD OAuth URL
+        const authUrl = new URL('https://login.microsoftonline.com/' + TEAMS_CONFIG.TENANT_ID + '/oauth2/v2.0/authorize');
+        authUrl.searchParams.append('client_id', TEAMS_CONFIG.CLIENT_ID);
+        authUrl.searchParams.append('response_type', 'code');
+        authUrl.searchParams.append('redirect_uri', TEAMS_CONFIG.REDIRECT_URI);
+        authUrl.searchParams.append('scope', TEAMS_CONFIG.SCOPES.join(' '));
+        authUrl.searchParams.append('state', this.generateState());
+
+        // Store state for verification
+        sessionStorage.setItem('oauth_state', authUrl.searchParams.get('state'));
+
+        // Open popup for authentication
+        const popup = window.open(authUrl.toString(), 'teamsAuth', 'width=500,height=600');
+        
+        return new Promise((resolve, reject) => {
+            const pollTimer = setInterval(() => {
+                try {
+                    if (popup.closed) {
+                        clearInterval(pollTimer);
+                        reject(new Error('Authentication popup was closed'));
+                        return;
+                    }
+
+                    // Check if popup has navigated to redirect URI
+                    if (popup.location.href.includes(TEAMS_CONFIG.REDIRECT_URI)) {
+                        const url = new URL(popup.location.href);
+                        const code = url.searchParams.get('code');
+                        const state = url.searchParams.get('state');
+                        
+                        popup.close();
+                        clearInterval(pollTimer);
+                        
+                        if (state !== sessionStorage.getItem('oauth_state')) {
+                            reject(new Error('Invalid state parameter'));
+                            return;
+                        }
+                        
+                        if (code) {
+                            this.exchangeCodeForToken(code).then(resolve).catch(reject);
+                        } else {
+                            reject(new Error('No authorization code received'));
+                        }
+                    }
+                } catch (error) {
+                    // Ignore cross-origin errors while popup is on different domain
+                }
+            }, 1000);
+        });
+    },
+
+    // Exchange authorization code for access token
+    async exchangeCodeForToken(code) {
+        const tokenUrl = 'https://login.microsoftonline.com/' + TEAMS_CONFIG.TENANT_ID + '/oauth2/v2.0/token';
+        
+        const response = await fetch(tokenUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: new URLSearchParams({
-                wstoken: this.moodleToken,
-                wsfunction: 'core_webservice_get_site_info',
-                moodlewsrestformat: 'json'
+                client_id: TEAMS_CONFIG.CLIENT_ID,
+                code: code,
+                redirect_uri: TEAMS_CONFIG.REDIRECT_URI,
+                grant_type: 'authorization_code',
+                scope: TEAMS_CONFIG.SCOPES.join(' ')
             })
         });
 
-        const data = await response.json();
-        
-        if (data.exception) {
-            throw new Error(data.message || 'Failed to get user info');
+        if (!response.ok) {
+            throw new Error(`Token exchange failed: ${response.status}`);
         }
 
-        return data;
+        const tokenData = await response.json();
+        
+        if (tokenData.error) {
+            throw new Error(tokenData.error_description || tokenData.error);
+        }
+
+        this.teamsToken = tokenData.access_token;
+        
+        // Get user info from token
+        const userInfo = this.decodeJWTToken(tokenData.access_token);
+        
+        this.user = {
+            id: userInfo.sub || userInfo.oid,
+            username: userInfo.preferred_username || userInfo.upn,
+            name: userInfo.name,
+            email: userInfo.email || userInfo.preferred_username,
+            tenantId: userInfo.tid,
+            teamsToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token
+        };
+
+        this.authMethod = 'teams';
+        
+        // Load existing data
+        await this.loadDataFromTeams();
+        
+        this.completeLogin();
+        this.startAutoSave();
     },
 
-    // Load physics audit data from Moodle user files
-    async loadDataFromMoodle() {
+    // Load Teams JavaScript SDK
+    async loadTeamsSDK() {
+        if (window.microsoftTeams) return;
+
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://res.cdn.office.net/teams-js/2.0.0/js/MicrosoftTeams.min.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Teams SDK'));
+            document.head.appendChild(script);
+        });
+    },
+
+    // Decode JWT token to get user info
+    decodeJWTToken(token) {
         try {
-            console.log('📁 Loading data from Moodle...');
-
-            // Get list of user's private files
-            const filesResponse = await fetch(`${this.user.moodleUrl}/webservice/rest/server.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    wstoken: this.moodleToken,
-                    wsfunction: 'core_files_get_files',
-                    moodlewsrestformat: 'json',
-                    contextid: -1, // User context
-                    component: 'user',
-                    filearea: 'private',
-                    itemid: 0,
-                    filepath: '/',
-                    filename: ''
-                })
-            });
-
-            const filesData = await filesResponse.json();
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
             
-            if (filesData.exception) {
-                console.log('📝 No existing data file found - starting fresh');
-                return;
-            }
+            return JSON.parse(jsonPayload);
+        } catch (error) {
+            console.error('Failed to decode JWT token:', error);
+            return {};
+        }
+    },
 
-            // Look for our data file
-            const dataFile = filesData.files?.find(file => 
-                file.filename === MOODLE_CONFIG.DATA_FILENAME
-            );
+    // Generate random state for OAuth
+    generateState() {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    },
 
-            if (dataFile) {
-                // Download and parse the data file
-                const fileResponse = await fetch(dataFile.fileurl + '&token=' + this.moodleToken);
-                const jsonData = await fileResponse.text();
-                
+    // Load physics audit data from Teams/SharePoint
+    async loadDataFromTeams() {
+        try {
+            console.log('📁 Loading data from Teams...');
+            
+            // For now, we'll store in localStorage with user-specific key
+            // In production, you might want to use SharePoint or Teams storage
+            const userSpecificKey = `physicsAuditData_teams_${this.user.id}`;
+            const savedData = localStorage.getItem(userSpecificKey);
+            
+            if (savedData) {
                 try {
-                    const savedData = JSON.parse(jsonData);
-                    
-                    // Load the data into the app
-                    this.confidenceLevels = savedData.confidenceLevels || {};
-                    this.analyticsHistoryData = savedData.analyticsHistory || [];
-                    
-                    console.log('✅ Data loaded from Moodle successfully');
+                    const parsedData = JSON.parse(savedData);
+                    this.confidenceLevels = parsedData.confidenceLevels || {};
+                    this.analyticsHistoryData = parsedData.analyticsHistory || [];
+                    console.log('✅ Data loaded from Teams storage successfully');
                 } catch (parseError) {
                     console.warn('⚠️ Could not parse saved data file');
                 }
             } else {
-                console.log('📝 No physics audit data file found - starting fresh');
+                console.log('📝 No physics audit data found - starting fresh');
             }
 
         } catch (error) {
-            console.warn('⚠️ Failed to load data from Moodle:', error);
+            console.warn('⚠️ Failed to load data from Teams:', error);
             // Continue without cloud data
         }
     },
 
-    // Save physics audit data to Moodle user files
-    async saveDataToMoodle() {
-        if (!this.user || !this.moodleToken || this.authMethod !== 'moodle') {
+    // Save physics audit data to Teams/SharePoint
+    async saveDataToTeams() {
+        if (!this.user || !this.teamsToken || this.authMethod !== 'teams') {
             return false;
         }
 
         try {
-            console.log('💾 Saving data to Moodle...');
+            console.log('💾 Saving data to Teams...');
 
             // Prepare the data to save
             const dataToSave = {
@@ -243,38 +323,16 @@ export const authMethods = {
                 }
             };
 
-            const jsonString = JSON.stringify(dataToSave, null, 2);
+            // For now, save to localStorage with user-specific key
+            // In production, implement SharePoint/Teams storage
+            const userSpecificKey = `physicsAuditData_teams_${this.user.id}`;
+            localStorage.setItem(userSpecificKey, JSON.stringify(dataToSave));
             
-            // Create a blob from the JSON data
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            
-            // Prepare form data for file upload
-            const formData = new FormData();
-            formData.append('token', this.moodleToken);
-            formData.append('component', 'user');
-            formData.append('filearea', 'private');
-            formData.append('itemid', '0');
-            formData.append('filepath', '/');
-            formData.append('filename', MOODLE_CONFIG.DATA_FILENAME);
-            formData.append('file_1', blob, MOODLE_CONFIG.DATA_FILENAME);
-
-            // Upload the file to Moodle
-            const uploadResponse = await fetch(`${this.user.moodleUrl}/webservice/upload.php`, {
-                method: 'POST',
-                body: formData
-            });
-
-            const uploadResult = await uploadResponse.json();
-            
-            if (uploadResult.error) {
-                throw new Error(uploadResult.error);
-            }
-
-            console.log('✅ Data saved to Moodle successfully');
+            console.log('✅ Data saved to Teams successfully');
             return true;
 
         } catch (error) {
-            console.error('❌ Failed to save data to Moodle:', error);
+            console.error('❌ Failed to save data to Teams:', error);
             return false;
         }
     },
@@ -285,12 +343,12 @@ export const authMethods = {
             clearInterval(this.autoSaveTimer);
         }
 
-        if (this.authMethod === 'moodle' && this.moodleToken) {
+        if (this.authMethod === 'teams' && this.teamsToken) {
             this.autoSaveTimer = setInterval(() => {
-                this.saveDataToMoodle();
-            }, MOODLE_CONFIG.AUTO_SAVE_INTERVAL);
+                this.saveDataToTeams();
+            }, TEAMS_CONFIG.AUTO_SAVE_INTERVAL);
             
-            console.log('🔄 Auto-save to Moodle enabled');
+            console.log('🔄 Auto-save to Teams enabled');
         }
     },
 
@@ -334,7 +392,11 @@ export const authMethods = {
             
             // Clear user-specific data if it exists
             if (this.user?.id) {
-                localStorage.removeItem(`physicsAuditData_student_${this.user.id}`);
+                if (this.authMethod === 'teams') {
+                    localStorage.removeItem(`physicsAuditData_teams_${this.user.id}`);
+                } else {
+                    localStorage.removeItem(`physicsAuditData_student_${this.user.id}`);
+                }
             }
             
             // Reset app state
@@ -346,16 +408,16 @@ export const authMethods = {
             this.analyticsHistoryData = [];
             
             // Clear internal state
-            this.moodleToken = null;
+            this.teamsToken = null;
             
             console.log('👋 Logged out successfully');
         }
     }
 };
 
-// Enhanced data management for Moodle integration
+// Enhanced data management for Teams integration
 export const enhancedDataManagement = {
-    // Enhanced save method that uses Moodle cloud storage
+    // Enhanced save method that uses Teams storage
     saveData() {
         const dataToSave = {
             confidenceLevels: this.confidenceLevels,
@@ -366,16 +428,15 @@ export const enhancedDataManagement = {
         };
 
         // Save locally first (always)
-        if (this.authMethod === 'moodle' && this.user?.id) {
-            localStorage.setItem(`physicsAuditData_student_${this.user.id}`, JSON.stringify(dataToSave));
+        if (this.authMethod === 'teams' && this.user?.id) {
+            localStorage.setItem(`physicsAuditData_teams_${this.user.id}`, JSON.stringify(dataToSave));
         } else {
             localStorage.setItem('physicsAuditData', JSON.stringify(dataToSave));
         }
 
-        // For Moodle users, also try to save to cloud (auto-save handles this)
-        // Manual save to cloud happens immediately
-        if (this.authMethod === 'moodle' && this.moodleToken) {
-            authMethods.saveDataToMoodle.call(this);
+        // For Teams users, also try to save to cloud (auto-save handles this)
+        if (this.authMethod === 'teams' && this.teamsToken) {
+            authMethods.saveDataToTeams.call(this);
         }
     },
 
@@ -383,9 +444,9 @@ export const enhancedDataManagement = {
         try {
             let savedData = null;
             
-            // For Moodle users, try user-specific data first
-            if (this.authMethod === 'moodle' && this.user?.id) {
-                const userSpecificData = localStorage.getItem(`physicsAuditData_student_${this.user.id}`);
+            // For Teams users, try user-specific data first
+            if (this.authMethod === 'teams' && this.user?.id) {
+                const userSpecificData = localStorage.getItem(`physicsAuditData_teams_${this.user.id}`);
                 if (userSpecificData) {
                     savedData = JSON.parse(userSpecificData);
                 }
@@ -415,7 +476,7 @@ export const enhancedDataManagement = {
             confidenceLevels: this.confidenceLevels,
             analyticsHistory: this.analyticsHistoryData || [],
             exportDate: new Date().toISOString(),
-            exportMethod: this.authMethod === 'moodle' ? 'moodle_cloud' : 'local',
+            exportMethod: this.authMethod === 'teams' ? 'teams_cloud' : 'local',
             version: "1.0",
             user: this.user
         };
@@ -425,7 +486,7 @@ export const enhancedDataManagement = {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         
-        const filename = this.authMethod === 'moodle' && this.user?.username
+        const filename = this.authMethod === 'teams' && this.user?.username
             ? `physics-audit-backup-${this.user.username}-${new Date().toISOString().split('T')[0]}.json`
             : `physics-audit-backup-${new Date().toISOString().split('T')[0]}.json`;
             
@@ -467,11 +528,11 @@ export const enhancedDataManagement = {
             
             // Clear local storage
             localStorage.removeItem('physicsAuditData');
-            if (this.authMethod === 'moodle' && this.user?.id) {
-                localStorage.removeItem(`physicsAuditData_student_${this.user.id}`);
+            if (this.authMethod === 'teams' && this.user?.id) {
+                localStorage.removeItem(`physicsAuditData_teams_${this.user.id}`);
             }
             
-            // Save empty data (which will also clear cloud storage for Moodle users)
+            // Save empty data (which will also clear cloud storage for Teams users)
             this.saveData();
             
             alert('All data has been cleared.');
