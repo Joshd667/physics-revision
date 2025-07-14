@@ -206,7 +206,7 @@ let allResources = {
 
 // Load videos from CSV
 async function loadVideos() {
-    const data = await loadCSVFile('resources/videos.csv');
+    const data = await loadCSVFile('resources/revision/videos.csv');
     allResources.videos = {};
     
     data.forEach((video) => {
@@ -240,7 +240,7 @@ async function loadVideos() {
 
 // Load notes from CSV
 async function loadNotes() {
-    const data = await loadCSVFile('resources/notes.csv');
+    const data = await loadCSVFile('resources/revision/notes.csv');
     allResources.notes = {};
     
     data.forEach((note) => {
@@ -274,7 +274,7 @@ async function loadNotes() {
 
 // Load simulations from CSV
 async function loadSimulations() {
-    const data = await loadCSVFile('resources/simulations.csv');
+    const data = await loadCSVFile('resources/revision/simulations.csv');
     allResources.simulations = {};
     
     data.forEach((sim) => {
@@ -308,7 +308,7 @@ async function loadSimulations() {
 
 // Load questions from CSV
 async function loadQuestions() {
-    const data = await loadCSVFile('resources/questions.csv');
+    const data = await loadCSVFile('resources/revision/questions.csv');
     allResources.questions = {};
     
     data.forEach((question) => {
@@ -343,7 +343,7 @@ async function loadQuestions() {
 
 // Load revision sections from CSV
 async function loadRevisionSections() {
-    const data = await loadCSVFile('resources/revisionsections.csv');
+    const data = await loadCSVFile('resources/revision/revisionsections.csv');
     allResources.sections = {};
     
     data.forEach((section) => {
