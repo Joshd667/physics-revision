@@ -18,7 +18,7 @@ const CRITICAL_RESOURCES = [
     './js/data/revision-mappings.js',
     './js/data/index.js',
     './js/data/unified-csv-loader.js',
-    './js/data/combined-data.json',
+    './resources/combined-data.json',
     
     // Module dependencies
     './js/modules/auth.js',
