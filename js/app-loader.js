@@ -67,8 +67,8 @@ async function loadDataWithFallback() {
         console.log('⚡ Attempting JSON loading...');
         const startTime = performance.now();
         
-        const response = await fetch('./js/data/combined-data.json', {
-            cache: 'default' // Use browser cache
+        const response = await fetch('./resources/combined-data.json', {
+            cache: 'default'
         });
         
         if (!response.ok) {
