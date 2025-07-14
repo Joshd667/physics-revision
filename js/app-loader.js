@@ -88,14 +88,22 @@ async function loadDataWithFallback() {
             resourcesLoaded: true
         };
         
-    } catch (jsonError) {
-        console.log('📝 JSON not found, using CSV fallback...');
-        console.log('💡 Run csv-converter.html to create combined-data.json for 10x faster loading');
-        
-        // Import and use existing CSV loader
-        const { loadAllData } = await import('./data/unified-csv-loader.js');
-        return await loadAllData();
-    }
+        } catch (jsonError) {
+            console.log('📝 JSON not found, using CSV fallback...');
+            console.log('💡 Run csv-converter.html to create combined-data.json for 10x faster loading');
+            
+            // Import and use existing CSV loader
+            const { loadAllData, getResourcesForSection } = await import('./data/unified-csv-loader.js');
+            const result = await loadAllData();
+            
+            // ✅ Set up the global function for CSV path (this was missing!)
+            window.getResourcesForSection = getResourcesForSection;
+            
+            return {
+                specificationData: result.specificationData,
+                resourcesLoaded: result.resourcesLoaded
+            };
+        }
 }
 
 // OPTIMIZED resource getter with pre-computed indexes
