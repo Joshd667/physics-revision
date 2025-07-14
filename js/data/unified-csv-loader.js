@@ -217,14 +217,22 @@ async function loadVideos() {
             allResources.videos[sectionId] = [];
         }
         
-        allResources.videos[sectionId].push({
+        const videoObject = {
             title: video.title || 'Untitled Video',
             description: video.description || '',
             url: video.url || '',
             duration: video.duration || '',
             difficulty: video.difficulty || 'Foundation',
             provider: video.provider || 'YouTube'
-        });
+        };
+
+        // Check if URL already exists for this section
+        const existingVideo = allResources.videos[sectionId].find(v => v.url === videoObject.url);
+        if (!existingVideo) {
+            allResources.videos[sectionId].push(videoObject);
+        } else {
+            console.log(`⚠️ Skipping duplicate video URL: ${videoObject.url}`);
+        }
     });
     
     return Object.values(allResources.videos).flat().length;
@@ -243,14 +251,22 @@ async function loadNotes() {
             allResources.notes[sectionId] = [];
         }
         
-        allResources.notes[sectionId].push({
+        const noteObject = {
             title: note.title || 'Untitled Note',
             description: note.description || '',
             url: note.url || '',
             type: note.type || 'PDF',
             pages: note.pages || '',
             difficulty: note.difficulty || 'Foundation'
-        });
+        };
+
+        // Check if URL already exists for this section
+        const existingNote = allResources.notes[sectionId].find(n => n.url === noteObject.url);
+        if (!existingNote) {
+            allResources.notes[sectionId].push(noteObject);
+        } else {
+            console.log(`⚠️ Skipping duplicate note URL: ${noteObject.url}`);
+        }
     });
     
     return Object.values(allResources.notes).flat().length;
@@ -269,14 +285,22 @@ async function loadSimulations() {
             allResources.simulations[sectionId] = [];
         }
         
-        allResources.simulations[sectionId].push({
+        const simObject = {
             title: sim.title || 'Untitled Simulation',
             description: sim.description || '',
             url: sim.url || '',
             provider: sim.provider || 'PhET',
             interactivity: sim.interactivity || 'High',
             difficulty: sim.difficulty || 'Foundation'
-        });
+        };
+
+        // Check if URL already exists for this section
+        const existingSim = allResources.simulations[sectionId].find(s => s.url === simObject.url);
+        if (!existingSim) {
+            allResources.simulations[sectionId].push(simObject);
+        } else {
+            console.log(`⚠️ Skipping duplicate simulation URL: ${simObject.url}`);
+        }
     });
     
     return Object.values(allResources.simulations).flat().length;
@@ -295,7 +319,7 @@ async function loadQuestions() {
             allResources.questions[sectionId] = [];
         }
         
-        allResources.questions[sectionId].push({
+        const questionObject = {
             title: question.title || 'Untitled Questions',
             description: question.description || '',
             url: question.url || '',
@@ -303,7 +327,15 @@ async function loadQuestions() {
             questionCount: question.question_count || '',
             difficulty: question.difficulty || 'Foundation',
             hasAnswers: question.has_answers === 'TRUE' || question.has_answers === 'true'
-        });
+        };
+
+        // Check if URL already exists for this section
+        const existingQuestion = allResources.questions[sectionId].find(q => q.url === questionObject.url);
+        if (!existingQuestion) {
+            allResources.questions[sectionId].push(questionObject);
+        } else {
+            console.log(`⚠️ Skipping duplicate question URL: ${questionObject.url}`);
+        }
     });
     
     return Object.values(allResources.questions).flat().length;
