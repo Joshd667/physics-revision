@@ -185,7 +185,13 @@ function createOptimizedResourceGetter(resourceData) {
                     break;
             }
             
-            indexes[key].get(sectionId).push(optimizedItem);
+            // Check for duplicates before adding
+            const existingItem = indexes[key].get(sectionId).find(existing => existing.url === optimizedItem.url);
+            if (!existingItem) {
+                indexes[key].get(sectionId).push(optimizedItem);
+            } else {
+                console.log(`⚠️ Skipping duplicate ${key} URL: ${optimizedItem.url}`);
+            }
         });
     });
     
