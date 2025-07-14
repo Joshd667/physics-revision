@@ -48,6 +48,7 @@
     >
         <div class="absolute inset-0 animated-gradient dark:bg-gray-900 z-0"></div>
         
+        <!-- login screen div -->
         <div x-show="showLoginScreen" class="relative z-10 h-screen flex items-center justify-center bg-transparent">
             <div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
                 <div class="text-center mb-8">
@@ -58,58 +59,38 @@
                     <p class="text-gray-600 dark:text-gray-400">Choose your login method to save your progress</p>
                 </div>
                 
-                <div x-data="{ selectedMethod: null, moodleUrl: '', username: '', password: '' }">
-                    <div x-show="!selectedMethod" class="space-y-4">
-                        <button @click="selectedMethod = 'moodle'" class="w-full flex items-center justify-center space-x-3 bg-orange-600 hover:bg-orange-700 text-white px-6 py-4 rounded-lg transition-colors">
-                            <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                <div class="space-y-4">
+                    <!-- Teams Login Button -->
+                    <button @click="loginWithTeams()" :disabled="isLoading" class="w-full flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-4 rounded-lg transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20.625 7.5l-7.5-7.5H4.5a1.5 1.5 0 00-1.5 1.5v19.5a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V7.5zM12 3.75L18.75 10.5H12V3.75z"/>
+                            </svg>
                             <div class="text-left">
-                                <div class="font-semibold">Login with Moodle</div>
-                                <div class="text-sm opacity-90">Data saved to your school's Moodle</div>
+                                <div class="font-semibold">Login with Microsoft Teams</div>
+                                <div class="text-sm opacity-90">Data synced to your Teams account</div>
                             </div>
-                        </button>
-                        
-                        <div class="text-center pt-4">
-                            <button @click="loginAsGuest()" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline">
-                                Continue as Guest (local storage only)
-                            </button>
                         </div>
-                    </div>
+                    </button>
                     
-                    <div x-show="selectedMethod === 'moodle'" x-transition>
-                        <div class="mb-4">
-                            <button @click="selectedMethod = null" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                                <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                                <span>Back</span>
-                            </button>
-                        </div>
-                        
-                        <form @submit.prevent="loginWithMoodle(username, password, moodleUrl)" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Moodle Site URL</label>
-                                <input x-model="moodleUrl" type="url" placeholder="https://moodle.yourschool.edu" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
-                                <input x-model="username" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
-                                <input x-model="password" type="password" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                            </div>
-                            <button type="submit" :disabled="isLoading" class="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors">
-                                <span x-show="!isLoading">Login to Moodle</span>
-                                <span x-show="isLoading" class="flex items-center justify-center">
-                                    <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Authenticating...
-                                </span>
-                            </button>
-                        </form>
+                    <!-- Guest Login Button -->
+                    <div class="text-center pt-2">
+                        <button @click="loginAsGuest()" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline">
+                            Continue as Guest (local storage only)
+                        </button>
                     </div>
                 </div>
                 
+                <!-- Loading State -->
+                <div x-show="isLoading" class="mt-4 flex items-center justify-center space-x-2">
+                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Authenticating...</span>
+                </div>
+                
+                <!-- Error State -->
                 <div x-show="loginError" x-transition class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
                     <p class="text-sm text-red-700 dark:text-red-300" x-text="loginError"></p>
                 </div>
@@ -131,7 +112,7 @@
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-slate-800 dark:text-slate-200" x-text="user ? user.name : 'Guest'"></div>
-                                <div class="text-xs text-slate-600 dark:text-slate-400" x-text="authMethod === 'moodle' ? 'Moodle Student' : authMethod === 'google' ? 'Google Drive' : 'Local'"></div>
+                                <div class="text-xs text-slate-600 dark:text-slate-400" x-text="authMethod === 'teams' ? 'Microsoft Teams' : 'Local Storage'"></div>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
