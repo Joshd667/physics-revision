@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Knowledge Audit Tool</title>
+    
+    <!-- 🚀 Preload critical resources -->
+    <link rel="preload" href="./resources/combined-data.json" as="fetch" crossorigin>
+    <link rel="preload" href="https://unpkg.com/alpinejs@3.x.x/dist/module.esm.js" as="script" crossorigin>
+    <link rel="dns-prefetch" href="//unpkg.com">
+    <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
+    
+    <!-- 🔧 Service Worker registration - MUCH CLEANER! -->
+    <script type="module">
+        import { registerServiceWorker } from './js/sw-registration.js';
+        registerServiceWorker();
+    </script>
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="apple-touch-icon" href="./favicon.ico">
+    <link rel="shortcut icon" href="./favicon.ico">
+    
+    <!-- Styles -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- External scripts -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Your app loader (must be last) -->
+    <script type="module" src="./js/app-loader.js"></script>
+</head>
+<body>
+    <div 
+        x-data="physicsAuditTool"
+        x-init="init"
+        x-cloak
+        class="relative h-screen"
+        :class="darkMode ? 'dark' : ''"
+    >
+        <div class="absolute inset-0 animated-gradient dark:bg-gray-900 z-0"></div>
+        
+        <!-- Login Screen Component -->
+        {{ LOGIN_SCREEN_COMPONENT }}
+        
+        <div x-show="isAuthenticated && !showLoginScreen" class="relative z-10 h-screen flex bg-transparent">
+            <!-- Sidebar Component -->
+            {{ SIDEBAR_COMPONENT }}
+            
+            <div x-show="sidebarVisible" class="w-px bg-white/30 dark:bg-gray-600/30 backdrop-blur-sm hidden md:block"></div>
+            <div class="flex-1 flex flex-col bg-transparent">
+                <div x-show="sidebarVisible" @click="sidebarVisible = false" class="fixed inset-0 bg-black/50 z-20 md:hidden" x-transition></div>
+                
+                <!-- Header Component -->
+                {{ HEADER_COMPONENT }}
+                
+                <div class="h-px bg-white/30 dark:bg-gray-600/30 backdrop-blur-sm"></div>
+                <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 relative z-10 minimal-scrollbar">
+                    <div class="p-6">
+                        <!-- Search Results Component -->
+                        {{ SEARCH_RESULTS_COMPONENT }}
+                        
+                        <!-- Analytics Dashboard Component -->
+                        {{ ANALYTICS_COMPONENT }}
+                        
+                        <!-- Revision View Component -->
+                        {{ REVISION_COMPONENT }}
+                        
+                        <!-- Main Menu Cards Component -->
+                        {{ MAIN_MENU_COMPONENT }}
+                        
+                        <!-- Section Cards Component -->
+                        {{ SECTION_CARDS_COMPONENT }}
+                        
+                        <!-- Topic Details Component -->
+                        {{ TOPIC_DETAILS_COMPONENT }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

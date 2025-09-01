@@ -1,0 +1,21 @@
+# Backup files
+index-backup.html
+index-new.html
+
+# Development artifacts
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+/tmp/
+temp/
+
+# Build artifacts (keep the built index.html)
+# Note: index.html is intentionally NOT ignored as it's the built output

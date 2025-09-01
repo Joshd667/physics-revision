@@ -1,0 +1,48 @@
+<!-- Login Screen Component -->
+<div x-show="showLoginScreen" class="relative z-10 h-screen flex items-center justify-center bg-transparent">
+    <div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center space-x-2 mb-4">
+                <i data-lucide="book-open" class="w-8 h-8 text-blue-600 dark:text-blue-400"></i>
+                <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200">Physics Audit</h1>
+            </div>
+            <p class="text-gray-600 dark:text-gray-400">Choose your login method to save your progress</p>
+        </div>
+        
+        <div class="space-y-4">
+            <!-- Teams Login Button -->
+            <button @click="loginWithTeams()" :disabled="isLoading" class="w-full flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-4 rounded-lg transition-colors">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.625 7.5l-7.5-7.5H4.5a1.5 1.5 0 00-1.5 1.5v19.5a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V7.5zM12 3.75L18.75 10.5H12V3.75z"/>
+                    </svg>
+                    <div class="text-left">
+                        <div class="font-semibold">Login with Microsoft Teams</div>
+                        <div class="text-sm opacity-90">Data synced to your Teams account</div>
+                    </div>
+                </div>
+            </button>
+            
+            <!-- Guest Login Button -->
+            <div class="text-center pt-2">
+                <button @click="loginAsGuest()" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline">
+                    Continue as Guest (local storage only)
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div x-show="isLoading" class="mt-4 flex items-center justify-center space-x-2">
+            <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm text-gray-600 dark:text-gray-400">Authenticating...</span>
+        </div>
+        
+        <!-- Error State -->
+        <div x-show="loginError" x-transition class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <p class="text-sm text-red-700 dark:text-red-300" x-text="loginError"></p>
+        </div>
+    </div>
+</div>

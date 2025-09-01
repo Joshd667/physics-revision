@@ -1,0 +1,44 @@
+<!-- Search Results Component -->
+<div x-show="searchVisible && searchResults.length > 0" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95 -translate-y-4" x-transition:enter-end="opacity-100 transform scale-100 translate-y-0">
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-200">Search Results</h2>
+            <span class="text-sm text-gray-600 dark:text-gray-400" x-text="`${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} found for '${searchQuery}'`"></span>
+        </div>
+        <div class="grid gap-4">
+            <template x-for="result in searchResults" :key="result.topicId">
+                <div @click="navigateToSearchResult(result)" class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md cursor-pointer transition-all">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 mr-4">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="text-lg font-semibold text-blue-600 dark:text-blue-400" x-text="result.topicId"></span>
+                                <span class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded" x-text="result.paper"></span>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2" x-text="result.topicTitle"></h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2" x-text="result.sectionTitle"></p>
+                            <p class="text-sm text-gray-500 dark:text-gray-500" x-html="result.snippet.replace(/\*\*(.*?)\*\*/g, '<mark class=&quot;bg-yellow-200 dark:bg-yellow-800 px-1 rounded&quot;>$1</mark>')"></p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="text-xs text-gray-500 dark:text-gray-400 mb-1">Confidence</span>
+                            <template x-if="result.confidence && result.confidence > 0">
+                                <div class="flex items-center justify-center w-8 h-8 rounded text-sm font-bold text-white" :style="getConfidenceBarStyle(result.confidence)" x-text="result.confidence"></div>
+                            </template>
+                            <template x-if="!result.confidence || result.confidence === 0">
+                                <div class="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                    <span class="text-xs text-gray-400">-</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+<div x-show="searchVisible && searchQuery.trim() && searchResults.length === 0" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95 -translate-y-4" x-transition:enter-end="opacity-100 transform scale-100 translate-y-0">
+    <div class="text-center py-12">
+        <i data-lucide="search-x" class="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No results found</h3>
+        <p class="text-gray-600 dark:text-gray-400" x-text="`No topics found matching '${searchQuery}'. Try a different search term.`"></p>
+    </div>
+</div>

@@ -1,0 +1,16 @@
+{
+  "name": "physics-revision-app",
+  "version": "1.0.0",
+  "description": "Physics Knowledge Audit Tool with component-based architecture",
+  "scripts": {
+    "build": "python3 build.py",
+    "dev": "./dev.sh dev",
+    "watch": "./dev.sh watch",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": ["physics", "education", "alpine.js", "components"],
+  "author": "Physics Revision Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}
